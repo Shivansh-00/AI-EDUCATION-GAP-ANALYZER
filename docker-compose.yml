@@ -1,0 +1,62 @@
+version: "3.9"
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    environment:
+      NEXT_PUBLIC_API_BASE: http://localhost:8080
+    ports: ["3000:3000"]
+    depends_on: [gateway]
+
+  gateway:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: uvicorn backend.gateway.main:app --host 0.0.0.0 --port 8080
+    ports: ["8080:8080"]
+    depends_on: [auth, quiz, performance, recommendation, knowledge-graph, tutor, analytics]
+
+  auth:
+    build: { context: ., dockerfile: backend/Dockerfile }
+    command: uvicorn backend.services.auth.main:app --host 0.0.0.0 --port 8001
+  quiz:
+    build: { context: ., dockerfile: backend/Dockerfile }
+    command: uvicorn backend.services.quiz.main:app --host 0.0.0.0 --port 8002
+  performance:
+    build: { context: ., dockerfile: backend/Dockerfile }
+    command: uvicorn backend.services.performance.main:app --host 0.0.0.0 --port 8003
+  recommendation:
+    build: { context: ., dockerfile: backend/Dockerfile }
+    command: uvicorn backend.services.recommendation.main:app --host 0.0.0.0 --port 8004
+  knowledge-graph:
+    build: { context: ., dockerfile: backend/Dockerfile }
+    command: uvicorn backend.services.knowledge_graph.main:app --host 0.0.0.0 --port 8005
+  tutor:
+    build: { context: ., dockerfile: backend/Dockerfile }
+    command: uvicorn backend.services.tutor.main:app --host 0.0.0.0 --port 8006
+  analytics:
+    build: { context: ., dockerfile: backend/Dockerfile }
+    command: uvicorn backend.services.analytics.main:app --host 0.0.0.0 --port 8007
+
+  worker:
+    build: { context: ., dockerfile: backend/Dockerfile }
+    command: python -m backend.workers.pipeline_worker
+    depends_on: [redis, quiz, performance, recommendation, knowledge-graph]
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: edgap
+    ports: ["5432:5432"]
+
+  redis:
+    image: redis:7
+    ports: ["6379:6379"]
+
+  neo4j:
+    image: neo4j:5
+    environment:
+      NEO4J_AUTH: neo4j/password
+    ports: ["7474:7474", "7687:7687"]
